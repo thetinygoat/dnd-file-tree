@@ -84,7 +84,9 @@ function insertNode(tree, activeNode, overId, dropIntent) {
     // check if we are the current node where drop is happening
     // and we are dropping inside
     if (node.id == overId && dropIntent == "inside") {
-      node.children = node.children || [];
+      if (!node.children) {
+        node.children = [];
+      }
       node.children.push(activeNode);
       return true;
     }
@@ -94,10 +96,12 @@ function insertNode(tree, activeNode, overId, dropIntent) {
       if (index !== -1) {
         if (dropIntent == "before") {
           node.children.splice(index, 0, activeNode);
+          return true;
         } else if (dropIntent == "after") {
           node.children.splice(index + 1, 0, activeNode);
+          return true;
         }
-        return true;
+        // If dropIntent is "inside", let recursion handle it
       }
     }
 
@@ -108,7 +112,10 @@ function insertNode(tree, activeNode, overId, dropIntent) {
     }
   }
 
-  if (newTree.id == overId) {
+  if (newTree.id == overId && dropIntent == "inside") {
+    if (!newTree.children) {
+      newTree.children = [];
+    }
     newTree.children.push(activeNode);
   } else {
     traverse(newTree);
@@ -146,6 +153,7 @@ function TreeItem({ node, depth, dropIntent, activeId, overId }) {
   const isDroppingInside = isOver && dropIntent == "inside";
 
   const indentPixels = depth * 20;
+  const isDirectory = !!node.children;
   const style = {
     transform: CSS.Transform.toString(transform),
     opacity: isDragging ? 0.5 : 1,
@@ -154,7 +162,9 @@ function TreeItem({ node, depth, dropIntent, activeId, overId }) {
     paddingTop: "10px",
     paddingLeft: `${indentPixels}px`,
     backgroundColor:
-      isDroppingInside && !isDragging ? "rgba(0, 0, 255, 0.1)" : "transparent",
+      isDirectory && isDroppingInside && !isDragging
+        ? "rgba(0, 0, 255, 0.1)"
+        : "transparent",
     cursor: "grab",
     position: "relative",
   };
@@ -284,18 +294,9 @@ export default function App() {
 
     const overNode = findNode(tree.children, over.id);
 
-    const isFile = overNode?.children;
+    const isDirectory = !!overNode?.children;
 
-    if (isFile) {
-      let zoneHeight = overRect.height;
-      let topZone = zoneHeight * 0.5;
-
-      if (offsetY < topZone) {
-        setDropIntent("before");
-      } else {
-        setDropIntent("after");
-      }
-    } else {
+    if (isDirectory) {
       let zoneHeight = overRect.height;
       let topZone = zoneHeight * 0.25;
       let bottomZone = zoneHeight * 0.75;
@@ -306,6 +307,15 @@ export default function App() {
         setDropIntent("after");
       } else {
         setDropIntent("inside");
+      }
+    } else {
+      let zoneHeight = overRect.height;
+      let topZone = zoneHeight * 0.5;
+
+      if (offsetY < topZone) {
+        setDropIntent("before");
+      } else {
+        setDropIntent("after");
       }
     }
   };
